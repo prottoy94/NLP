@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quora Duplicate Question Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-labelledby="app-title">
+        <div class="workspace-header">
+          <div>
+            <p class="eyebrow">NLP Model</p>
+            <h1 id="app-title">Quora Duplicate Question Detector</h1>
+          </div>
+          <div class="status-pill" id="status-pill">Ready</div>
+        </div>
+
+        <form class="question-form" id="question-form">
+          <label class="field">
+            <span>Question 1</span>
+            <textarea id="question1" name="question1" rows="5" maxlength="600" required>What is the capital of India?</textarea>
+          </label>
+
+          <label class="field">
+            <span>Question 2</span>
+            <textarea id="question2" name="question2" rows="5" maxlength="600" required>What is the current capital of India?</textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="secondary-button" type="button" id="clear-button">Clear</button>
+            <button class="primary-button" type="submit" id="predict-button">Predict</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="result-panel" aria-live="polite">
+        <div class="result-header">
+          <p class="eyebrow">Result</p>
+          <span class="result-badge" id="result-badge">Waiting</span>
+        </div>
+
+        <div class="score-block">
+          <span class="score-label">Duplicate Probability</span>
+          <strong class="score-value" id="probability-value">--</strong>
+          <div class="meter" aria-hidden="true">
+            <div class="meter-fill" id="probability-meter"></div>
+          </div>
+        </div>
+
+        <dl class="result-details">
+          <div>
+            <dt>Prediction</dt>
+            <dd id="prediction-value">Submit two questions</dd>
+          </div>
+          <div>
+            <dt>Confidence</dt>
+            <dd id="confidence-value">--</dd>
+          </div>
+        </dl>
+
+        <div class="cleaned-output" id="cleaned-output" hidden>
+          <p class="eyebrow">Processed Text</p>
+          <p id="cleaned-question1"></p>
+          <p id="cleaned-question2"></p>
+        </div>
+      </aside>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/model.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/view.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/controller.js') }}"></script>
+  </body>
+</html>

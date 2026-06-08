@@ -1,0 +1,5 @@
+beautifulsoup4
+flask
+fuzzywuzzy
+numpy
+scikit-learn
