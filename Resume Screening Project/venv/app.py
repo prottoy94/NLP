@@ -17,6 +17,57 @@ tfidf = joblib.load('tfidf_vectorizer.pkl')
 
 def preprocess(txt):
     txt = str(txt).lower().strip()
+    
+    # ========== NEW: EXTRACT ONLY SKILLS SECTION ==========
+    # Look for skills section in the resume
+    skills_text = ""
+    
+    # Common skill section headers
+    skill_headers = [
+        r'skills?:', r'technical skills?:', r'core competencies?:', 
+        r'key skills?:', r'expertise:', r'technologies?:', 
+        r'programming languages?:', r'tools?:', r'tech skills?:',
+        r'professional skills?:', r'areas of expertise:'
+    ]
+    
+    # Try to find skills section
+    lines = txt.split('\n')
+    in_skills_section = False
+    skills_lines = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower().strip()
+        
+        # Check if this line starts a skills section
+        for header in skill_headers:
+            if re.match(header, line_lower):
+                in_skills_section = True
+                # Extract content after the header
+                content = re.sub(header, '', line_lower).strip()
+                if content:
+                    skills_lines.append(content)
+                break
+        
+        # If we're in skills section, collect lines until next major section
+        if in_skills_section:
+            # Stop at next major section (common section headers)
+            next_section = re.match(r'(education|experience|work|project|certification|language|profile|summary|objective):', line_lower)
+            if next_section and i > 0 and skills_lines:
+                in_skills_section = False
+                break
+            
+            # Add non-empty lines that aren't just numbers/bullets
+            if line_lower and not re.match(r'^[\d\-\*•\s]+$', line_lower):
+                if not any(re.match(header, line_lower) for header in skill_headers):
+                    skills_lines.append(line_lower)
+    
+    # If skills section found, use it; otherwise, use first 500 chars as fallback
+    if skills_lines:
+        txt = ' '.join(skills_lines)
+    else:
+        # Fallback: take first 500 characters (often contains skills in compact resumes)
+        txt = txt[:500]
+    
     txt = txt.replace("\n"," ").replace("\r"," ").replace("\t"," ")
     txt = txt.replace("’","'").replace("‘","'").replace("“",'"').replace("”",'"')
     txt = re.sub(r'https?\S+\s|www\.\S+\s', '', txt)
