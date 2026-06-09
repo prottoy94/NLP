@@ -1,3 +1,4 @@
+import PyPDF2  # Add this at the top with other imports
 import streamlit as st
 import pickle
 import nltk
@@ -6,7 +7,6 @@ import string
 import joblib
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
-tfidf = TfidfVectorizer(max_features=3000,stop_words='english')
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -18,19 +18,28 @@ tfidf = joblib.load('tfidf_vectorizer.pkl')
 def preprocess(txt):
     txt = str(txt).lower().strip()
     
-    # ========== NEW: EXTRACT ONLY SKILLS SECTION ==========
-    # Look for skills section in the resume
-    skills_text = ""
-    
     # Common skill section headers
     skill_headers = [
-        r'skills?:', r'technical skills?:', r'core competencies?:', 
-        r'key skills?:', r'expertise:', r'technologies?:', 
-        r'programming languages?:', r'tools?:', r'tech skills?:',
-        r'professional skills?:', r'areas of expertise:'
+        r'skills?:', r'skills summary:', r'core skills?:', r'key skills?:',
+        r'technical skills?:', r'tech skills?:', r'professional skills?:',
+        r'expertise:', r'areas of expertise:', r'core competencies:',
+        r'competencies:', r'technologies?:', r'technology stack:',
+        r'tech stack:', r'programming languages?:', r'languages:',
+        r'tools:', r'tools & technologies:', r'technical expertise:',
+        r'technical proficiencies:', r'proficiencies:', r'experience:',
+        r'familiar with:', r'proficient in:', r'skilled in:',
+        r'hands-on experience:', r'working knowledge:', r'platforms?:',
+        r'frameworks?:', r'databases?:', r'cloud platforms?:',
+        r'devops tools?:', r'development tools?:', r'soft skills?:',
+        r'interpersonal skills?:', r'leadership skills?:', r'management skills?:',
+        r'communication skills?:', r'certifications?:', r'languages spoken:',
+        r'foreign languages:', r'skills & abilities:', r'abilities:',
+        r'qualifications:', r'technical background:', r'core qualifications:',
+        r'areas of proficiency:', r'skillset:', r'skill set:', r'key competencies:',
+        r'main skills:', r'primary skills:', r'specialties:',
+        r'areas of specialization:', r'expertise areas:'
     ]
     
-    # Try to find skills section
     lines = txt.split('\n')
     in_skills_section = False
     skills_lines = []
@@ -38,35 +47,58 @@ def preprocess(txt):
     for i, line in enumerate(lines):
         line_lower = line.lower().strip()
         
-        # Check if this line starts a skills section
+        # FIX 1: Use re.search instead of re.match
         for header in skill_headers:
-            if re.match(header, line_lower):
+            if re.search(header, line_lower):  # Changed from re.match
                 in_skills_section = True
-                # Extract content after the header
                 content = re.sub(header, '', line_lower).strip()
                 if content:
                     skills_lines.append(content)
                 break
         
-        # If we're in skills section, collect lines until next major section
         if in_skills_section:
-            # Stop at next major section (common section headers)
             next_section = re.match(r'(education|experience|work|project|certification|language|profile|summary|objective):', line_lower)
             if next_section and i > 0 and skills_lines:
                 in_skills_section = False
                 break
             
-            # Add non-empty lines that aren't just numbers/bullets
             if line_lower and not re.match(r'^[\d\-\*•\s]+$', line_lower):
-                if not any(re.match(header, line_lower) for header in skill_headers):
+                # FIX 2: Use re.search here too
+                if not any(re.search(header, line_lower) for header in skill_headers):  # Changed from re.match
                     skills_lines.append(line_lower)
     
-    # If skills section found, use it; otherwise, use first 500 chars as fallback
+    # FIX 3: Add keyword-based extraction as fallback
     if skills_lines:
         txt = ' '.join(skills_lines)
     else:
-        # Fallback: take first 500 characters (often contains skills in compact resumes)
-        txt = txt[:500]
+        # Keyword-based extraction for resumes without clear skills sections
+        tech_keywords = [
+            'python', 'java', 'javascript', 'typescript', 'sql', 'nosql',
+            'react', 'angular', 'vue', 'node', 'django', 'flask', 'spring',
+            'c++', 'c#', 'php', 'ruby', 'go', 'machine learning', 
+            'deep learning', 'tensorflow', 'pytorch', 'keras', 'pandas', 
+            'numpy', 'scikit-learn', 'matplotlib', 'aws', 'azure', 'gcp',
+            'docker', 'kubernetes', 'jenkins', 'git', 'agile', 'scrum',
+            'html', 'css', 'bootstrap', 'rest api', 'graphql',
+            'leadership', 'project management', 'team management'
+        ]
+        
+        keyword_lines = []
+        for line in lines:
+            line_lower = line.lower().strip()
+            if len(line_lower) < 3:
+                continue
+            for keyword in tech_keywords:
+                if keyword in line_lower:
+                    keyword_lines.append(line_lower)
+                    break
+        
+        if keyword_lines:
+            txt = ' '.join(keyword_lines)
+            if len(txt) > 2000:
+                txt = txt[:2000]
+        else:
+            txt = txt[:2000]  # Limit to first 2000 characters if no skills found
     
     txt = txt.replace("\n"," ").replace("\r"," ").replace("\t"," ")
     txt = txt.replace("’","'").replace("‘","'").replace("“",'"').replace("”",'"')
@@ -243,6 +275,20 @@ def preprocess(txt):
     
     return txt
 
+def extract_text_from_pdf(pdf_file):
+    """Extract text from PDF file"""
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+        return text
+    except Exception as e:
+        st.error(f"Error reading PDF: {str(e)}")
+        return ""
+    
 def main():
     st.title("Resume Screening Application")
     st.write("Upload a resume to predict its category.")
@@ -250,26 +296,42 @@ def main():
     uploaded_file = st.file_uploader("Choose a resume file", type=["txt", "pdf", "docx"])
     
     if uploaded_file is not None:
-        try:
-            resume_text = uploaded_file.read().decode('utf-8')
-        except Exception as e:
-            resume_text = uploaded_file.read().decode('latin-1')
+        resume_text = ""
         
-        cleaned_text = preprocess(resume_text)  # CHANGED: cleanResume → preprocess
-
-        # Vectorize the cleaned text using the same TF-IDF vectorizer used during training
-        vectorized_text = tfidf.transform([cleaned_text])
+        # FIX: Handle PDF files properly
+        if uploaded_file.type == "application/pdf":
+            with st.spinner("Extracting text from PDF..."):
+                resume_text = extract_text_from_pdf(uploaded_file)
+            if not resume_text:
+                st.error("Could not extract text from PDF. The file might be scanned or image-based.")
+                st.stop()
+        else:
+            # Handle TXT files
+            try:
+                resume_text = uploaded_file.read().decode('utf-8')
+            except Exception as e:
+                try:
+                    resume_text = uploaded_file.read().decode('latin-1')
+                except Exception as e2:
+                    st.error(f"Error reading file: {str(e2)}")
+                    st.stop()
         
-        # Convert sparse matrix to dense
-        vectorized_text = vectorized_text.toarray()
-
-        # Prediction - use your trained KNN model (not svc_model)
-        predicted_category = clf.predict(vectorized_text)  # CHANGED: svc_model → clf
-
-        # get name of predicted category
-        predicted_category_name = le.inverse_transform(predicted_category)
-        print(predicted_category_name[0])  # Print the predicted category name
-        st.write(f"Predicted Category: {predicted_category_name[0]}")
+        if resume_text:
+            cleaned_text = preprocess(resume_text)  # ← FIXED INDENTATION
+            
+            # Vectorize the cleaned text
+            vectorized_text = tfidf.transform([cleaned_text])
+            
+            # Convert sparse matrix to dense
+            vectorized_text = vectorized_text.toarray()
+            
+            # Prediction
+            predicted_category = clf.predict(vectorized_text)
+            
+            # Get name of predicted category
+            predicted_category_name = le.inverse_transform(predicted_category)
+            print(predicted_category_name[0])
+            st.success(f"Predicted Category: **{predicted_category_name[0]}**")
     
 if __name__ == "__main__":
     main()
