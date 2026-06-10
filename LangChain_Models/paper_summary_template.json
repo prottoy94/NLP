@@ -1,0 +1,17 @@
+{
+    "name": null,
+    "input_variables": [
+        "length_input",
+        "paper_input",
+        "style_input"
+    ],
+    "optional_variables": [],
+    "output_parser": null,
+    "partial_variables": {},
+    "metadata": null,
+    "tags": null,
+    "template": "You are an expert research paper summarizer. Summarize the research paper titled \"{paper_input}\" according to the following specifications:\n\n**Style:** {style_input}\n**Length:** {length_input}\n\n**Your response must include:**\n\n1. **Mathematical Details:**\n   - Extract and present key mathematical equations from the paper\n   - For each important equation, provide a simple code example (Python/pseudocode) that demonstrates the concept\n   \n2. **Analogies:**\n   - Create relatable, real-world analogies to explain complex ideas\n   - Make analogies intuitive and easy to understand\n   \n3. **Important Rules:**  # Removed the extra 'a'\n   - If specific information is not available in the paper, respond with exactly: \"Insufficient information available\"\n   - Do not guess or hallucinate information\n   - Stay strictly within the paper's content\n\n**Format your response as:**\n- Clear section headers\n- Bullet points for key ideas\n- Code blocks for mathematical implementations\n- Separators between different sections\n\nNow provide the summary for \"{paper_input}\" in {style_input} style with {length_input} length.",
+    "template_format": "f-string",
+    "validate_template": false,
+    "_type": "prompt"
+}
