@@ -12,11 +12,11 @@ Below, the ocean churned, a restless, ink-black beast. Its rhythmic roar was the
 
 With a heavy sigh, he descended the stairs, his footsteps echoing in the hollow tower. He stepped outside, the wind whipping at his coat. He took one last look at the dark tower, a monument to a bygone era. Then, he turned his back on the sea and walked toward the faint glow of the mainland, carrying a lifetime of light within him, even as the lighthouse itself went dark."""
 
-splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=0, separator='')
+splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
 #splitter = TextSplitter(chunk_size=200, chunk_overlap=50)
 
 result = splitter.split_text(text)
-result1 = splitter.split_documents(docs)
 
 print(result)
-print(result1[0].page_content)
+print(len(result))
+
