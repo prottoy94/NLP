@@ -24,3 +24,10 @@ python-dotenv
 # Machine Learning Utilities
 numpy
 scikit-learn
+
+# YouTube RAG project (yt_rag)
+langchain-community
+langchain-text-splitters
+youtube-transcript-api
+faiss-cpu
+flask

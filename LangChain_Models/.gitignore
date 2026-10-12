@@ -2,7 +2,9 @@ venv/
 __pycache__/
 *.pyc
 .env
-.env
+
+# Local editor settings
+.vscode/
 
 # Ignore books folder
 Document_loaders/books/

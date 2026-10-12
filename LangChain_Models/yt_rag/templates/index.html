@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube RAG Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <h1>▶ YouTube RAG Chatbot</h1>
+        <p>Paste a YouTube link, get a summary, and chat with the video's transcript.</p>
+    </header>
+
+    <main class="container">
+
+        <!-- A. YouTube URL input -->
+        <section class="card">
+            <form id="load-form" class="url-form">
+                <input type="text" id="url-input"
+                       placeholder="https://www.youtube.com/watch?v=..."
+                       autocomplete="off">
+                <button type="submit" id="load-button">Load Video</button>
+            </form>
+            <div id="load-status" class="status hidden"></div>
+        </section>
+
+        <!-- Hidden until a video is loaded -->
+        <div id="video-area" class="grid hidden">
+
+            <!-- Left column: B. video info + C. summary -->
+            <div class="column">
+                <section class="card">
+                    <h2 id="video-title">Video</h2>
+                    <div class="video-wrapper">
+                        <iframe id="video-frame" title="YouTube video player"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                    <p class="video-meta">
+                        Video ID: <code id="video-id"></code>
+                        &middot; <span id="chunk-count"></span>
+                    </p>
+                </section>
+
+                <section class="card">
+                    <div class="card-header">
+                        <h2>Summary</h2>
+                        <button id="summary-button" class="secondary">Generate Summary</button>
+                    </div>
+                    <div id="summary-status" class="status hidden"></div>
+                    <div id="summary-output" class="summary-text">
+                        <p class="muted">Click "Generate Summary" to summarize the transcript.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right column: D. chat -->
+            <section class="card chat-card">
+                <h2>Chat with the video</h2>
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message assistant">
+                        Hi! Ask me anything about this video. I'll answer only from its transcript.
+                    </div>
+                </div>
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="chat-input"
+                           placeholder="e.g. What is the main topic of this video?"
+                           autocomplete="off">
+                    <button type="submit" id="send-button">Send</button>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
