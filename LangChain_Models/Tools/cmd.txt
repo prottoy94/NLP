@@ -1,0 +1,5 @@
+.\venv\Scripts\Activate.ps1
+pip install -U langchain-community ddgs
+cd LangChain_Models\Tools
+python basicTool.py
+python customTool.py
