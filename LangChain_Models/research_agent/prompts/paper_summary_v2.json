@@ -1,0 +1,17 @@
+{
+    "name": "paper_summary_v2",
+    "input_variables": [
+        "length",
+        "paper_text",
+        "style"
+    ],
+    "optional_variables": [],
+    "output_parser": null,
+    "partial_variables": {},
+    "metadata": null,
+    "tags": null,
+    "template": "You are an expert research paper summarizer.\nSummarize the research paper whose text is given below.\n\n**Style:** {style}\n**Length:** {length}\n\n**Important rules:**\n- Use ONLY the paper text below. Do not use outside knowledge about the paper.\n- If specific information is not available in the text, write exactly: \"Insufficient information available\".\n- Do not guess or hallucinate numbers, datasets or results.\n- Write equations in plain text or LaTeX and explain what each one means.\n\n--- PAPER TEXT START ---\n{paper_text}\n--- PAPER TEXT END ---",
+    "template_format": "f-string",
+    "validate_template": false,
+    "_type": "prompt"
+}

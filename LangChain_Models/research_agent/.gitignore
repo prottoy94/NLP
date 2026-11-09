@@ -1,0 +1,3 @@
+# Downloaded PDFs are a cache - they can always be re-downloaded from arXiv
+papers/
+__pycache__/

@@ -1,0 +1,19 @@
+# Research Paper Agent - installed into LangChain_Models/venv
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+langchain-google-genai
+langchain-groq
+langgraph
+python-dotenv
+pydantic
+arxiv
+requests
+pypdf
+faiss-cpu
+
+# Web app (milestones 4-5)
+fastapi
+uvicorn
+jinja2
