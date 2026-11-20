@@ -2,6 +2,7 @@ import os
 
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,8 +12,10 @@ class LLMError(Exception):
     pass
 
 
-PROVIDERS = ["gemini", "groq"]
+PROVIDERS = ["gemini", "groq", "openrouter"]
 DEFAULT_PROVIDER = "gemini"
+
+OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 
 
 def check_api_key(key_name):
@@ -33,9 +36,17 @@ def get_llm(provider=DEFAULT_PROVIDER, temperature=0):
     elif provider == "groq":
         check_api_key("GROQ_API_KEY")
         llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=temperature,
             groq_api_key=os.getenv("GROQ_API_KEY"),
+        )
+    elif provider == "openrouter":
+        check_api_key("OPENROUTER_API_KEY")
+        llm = ChatOpenAI(
+            model=OPENROUTER_MODEL,
+            temperature=temperature,
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url="https://openrouter.ai/api/v1",
         )
     else:
         raise LLMError(

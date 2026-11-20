@@ -31,7 +31,7 @@ GEMINI_MAX_CHARS = 150_000
 GROQ_START_CHARS = 12_000
 GROQ_END_CHARS = 4_000
 
-EMBED_BATCH_SIZE = 80
+EMBED_BATCH_SIZE = 30
 EMBED_WAIT_SECONDS = 62
 
 arxiv_client = arxiv.Client(page_size=50, delay_seconds=3.0, num_retries=3)
@@ -262,10 +262,16 @@ def build_vectorstore(chunks):
                     vectorstore.add_documents(batch)
                 break
             except Exception as error:
-                if not is_rate_limit(error) or attempt == 2:
+                if attempt == 2:
                     raise
-                logger.warning("Embedding rate limit hit, waiting %ss", EMBED_WAIT_SECONDS)
-                time.sleep(EMBED_WAIT_SECONDS)
+
+                if is_rate_limit(error):
+                    wait_seconds = EMBED_WAIT_SECONDS
+                else:
+                    wait_seconds = 5
+
+                logger.warning("Embedding failed (%s), waiting %ss", error, wait_seconds)
+                time.sleep(wait_seconds)
 
     return vectorstore
 
@@ -280,7 +286,7 @@ def get_retriever(arxiv_id):
 
     vectorstore = build_vectorstore(chunks)
     retriever = vectorstore.as_retriever(
-        search_type="similarity", search_kwargs={"k": 4}
+        search_type="similarity", search_kwargs={"k": 6}
     )
 
     store.upsert(arxiv_id, retriever=retriever)
@@ -318,7 +324,17 @@ def ask(arxiv_id, question, provider):
     )
 
     main_chain = parallel_chain | ask_prompt | get_llm(provider) | parser
-    return main_chain.invoke(question)
+
+    try:
+        answer = main_chain.invoke(question)
+    except Exception as error:
+        if not is_rate_limit(error):
+            raise
+        logger.warning("Rate limit hit while asking, waiting %ss", EMBED_WAIT_SECONDS)
+        time.sleep(EMBED_WAIT_SECONDS)
+        answer = main_chain.invoke(question)
+
+    return answer
 
 
 compare_prompt = PromptTemplate.from_template("""

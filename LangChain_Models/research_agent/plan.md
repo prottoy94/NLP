@@ -9,7 +9,7 @@ This feeds directly into my [Humanizer project](../../Humanizer%20Project/), bec
 
 **Decisions made**
 - Interface: **FastAPI backend + HTML/JS web page**
-- LLM: **switchable**. Gemini 2.5 Flash is the default; Groq Llama 3.3-70B is the alternative.
+- LLM: **switchable**. Gemini 2.5 Flash is the default; Groq `openai/gpt-oss-120b` is the alternative (Llama 3.3-70B was retired by Groq). OpenRouter free models are a third option (`OPENROUTER_MODEL` in llm.py, default `nvidia/nemotron-3-ultra-550b-a55b:free`).
 - Location: `LangChain_Models/research_agent/`. It reuses the existing `.env` and `venv`.
 
 ---
@@ -109,7 +109,7 @@ research_agent/
 ### `llm.py`
 - `get_llm(provider: "gemini" | "groq")`
   - `gemini` → `ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)`
-  - `groq` → `ChatGroq(model="llama-3.3-70b-versatile", temperature=0)`
+  - `groq` → `ChatGroq(model="openai/gpt-oss-120b", temperature=0)`
 - Embeddings always use Gemini `gemini-embedding-2`, the same as yt_rag.
 
 ### `store.py`
@@ -147,7 +147,7 @@ Each tool returns **short strings** so the agent's context stays small. The larg
 |---|---|---|
 | 1 | `search_arxiv(query, max_results=5, sort="relevance"\|"recent")` | Calls the `arxiv` package and returns id, title, authors, date and a short abstract. Respects arXiv's rate limit (~1 request every 3 seconds). |
 | 2 | `load_paper(arxiv_id)` | Downloads the PDF, extracts the text with `PyPDFLoader`, chunks it with `RecursiveCharacterTextSplitter` and builds a FAISS retriever (same pattern as yt_rag `build_retriever`). Returns only the title and page count. |
-| 3 | `summarize_paper(arxiv_id, style, length)` | Runs the v2 template with `with_structured_output(PaperSummary)`. Gemini gets the full text; Groq uses map-reduce over chunks. Caches the result. |
+| 3 | `summarize_paper(arxiv_id, style, length)` | Runs the v2 template with `with_structured_output(PaperSummary)`. Gemini and OpenRouter get the full text; Groq gets the first 12k + last 4k characters. Caches the result. |
 | 4 | `ask_paper(arxiv_id, question)` | Grounded RAG Q&A: same chain shape and "answer ONLY from context" prompt as yt_rag. |
 | 5 | `compare_papers(arxiv_ids)` | Builds a Markdown comparison table from the cached summaries (`PaperComparison`). |
 | 6 | `save_notes(title, markdown)` | Writes `notes/<date>-<slug>.md` and returns the path. |
@@ -188,6 +188,17 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 | 4 | **FastAPI backend** | Endpoints work from the auto-generated `/docs` page | FastAPI, Pydantic request models, SSE streaming |
 | 5 | **Web page** | Chat with live tool steps, rendered Markdown and notes download | Consuming SSE with JavaScript |
 | 6 | **Polish** | Caching, friendly errors, and a saved "Humanizer literature review" note | Making the app reliable enough for daily use |
+
+### Progress
+| # | Status | Notes |
+|---|---|---|
+| 0–2 | ✅ Done | Tools tested; CLI agent in `agent.py` (`python agent.py groq` / `openrouter`) |
+| 3 | ✅ Done (Gemini run pending) | Memory works: "the second paper", "the first and third" resolve correctly across turns. Groq and OpenRouter run the full agent. Gemini's free tier is only **20 requests/day**, so it ran out before a full test. |
+
+**Milestone 3 findings**
+- **Groq summaries are weaker:** Groq gets only the first 12k + last 4k characters, so it misses datasets and limitations that sit in the middle of a paper. Use OpenRouter (1M context) or Gemini for best summaries.
+- **Gemini embeddings limit is 30,000 tokens/minute** (one paper ≈ 25k tokens), so embedding now runs in batches of 30 chunks with a 62 s wait between them, and `ask_paper` retries once on a rate limit or network error.
+- **Retrieval limit:** answers hidden in tables (e.g. "z-threshold 4.0") can be missed, even with `k=6`. A future fix is the MultiQuery / MMR retrievers from `Retrivers/`.
 
 ---
 
