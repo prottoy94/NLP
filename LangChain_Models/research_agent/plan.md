@@ -193,7 +193,8 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 | # | Status | Notes |
 |---|---|---|
 | 0–2 | ✅ Done | Tools tested; CLI agent in `agent.py` (`python agent.py groq` / `openrouter`) |
-| 3 | ✅ Done (Gemini run pending) | Memory works: "the second paper", "the first and third" resolve correctly across turns. Groq and OpenRouter run the full agent. Gemini's free tier is only **20 requests/day**, so it ran out before a full test. |
+| 3 | ✅ Done | Memory works: "the second paper", "the first and third" resolve correctly across turns. Groq and OpenRouter run the full agent. Gemini's free tier is only **20 requests/day**, so it ran out before a full test. |
+| 4 | ✅ Done | `main.py` FastAPI backend: `/api/chat`, `/api/chat/stream` (live events), `/api/papers`, `/api/notes`. Run with `python main.py`, test at http://127.0.0.1:8000/docs. All 3 providers share one memory, so you can switch provider in the middle of a conversation. |
 
 **Milestone 3 findings**
 - **Groq summaries are weaker:** Groq gets only the first 12k + last 4k characters, so it misses datasets and limitations that sit in the middle of a paper. Use OpenRouter (1M context) or Gemini for best summaries.

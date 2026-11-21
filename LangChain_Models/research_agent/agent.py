@@ -25,7 +25,10 @@ Other rules:
 """
 
 
-def build_agent(provider=DEFAULT_PROVIDER):
+def build_agent(provider=DEFAULT_PROVIDER, memory=None):
+    if memory is None:
+        memory = InMemorySaver()
+
     llm = get_llm(provider)
     tools = build_tools(provider)
 
@@ -33,7 +36,7 @@ def build_agent(provider=DEFAULT_PROVIDER):
         model=llm,
         tools=tools,
         system_prompt=SYSTEM_PROMPT,
-        checkpointer=InMemorySaver(),
+        checkpointer=memory,
     )
     return agent
 
