@@ -6,6 +6,7 @@ import uuid
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import BaseModel
 
@@ -19,7 +20,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+TEMPLATES_DIR = store.BASE_DIR / "templates"
+STATIC_DIR = store.BASE_DIR / "static"
+
 app = FastAPI(title="Research Paper Agent")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # ---------------------------------------------------------------------------
@@ -155,10 +160,7 @@ def stream_agent_events(agent, message, thread_id):
 # ---------------------------------------------------------------------------
 @app.get("/")
 def index():
-    return {
-        "message": "Research Paper Agent is running.",
-        "docs": "Open /docs to try the API.",
-    }
+    return FileResponse(TEMPLATES_DIR / "index.html")
 
 
 @app.get("/api/providers")

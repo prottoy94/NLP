@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper Agent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div>
+            <h1>📚 Research Paper Agent</h1>
+            <p>Search arXiv, summarize papers, compare them and save notes.</p>
+        </div>
+        <div class="header-controls">
+            <label for="provider-select">Provider</label>
+            <select id="provider-select"></select>
+            <button id="new-chat-button" class="secondary">New chat</button>
+        </div>
+    </header>
+
+    <main class="layout">
+
+        <!-- A. Sidebar: saved notes + loaded papers -->
+        <aside class="sidebar">
+            <section class="card">
+                <div class="card-header">
+                    <h2>🗒️ Saved notes</h2>
+                    <button id="refresh-button" class="small secondary">Refresh</button>
+                </div>
+                <ul id="notes-list" class="item-list">
+                    <li class="muted">No notes yet.</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <h2>📄 Papers</h2>
+                <ul id="papers-list" class="item-list">
+                    <li class="muted">No papers yet.</li>
+                </ul>
+            </section>
+        </aside>
+
+        <!-- B. Chat -->
+        <section class="card chat-card">
+            <div id="chat-messages" class="chat-messages">
+                <div class="message assistant">
+                    Hi! Ask me to find, summarize or compare research papers.
+                    For example: <em>"Find 2 recent papers on AI-generated text detection, summarize them and compare their methods."</em>
+                </div>
+            </div>
+
+            <form id="chat-form" class="chat-form">
+                <textarea id="chat-input" rows="2"
+                          placeholder="Type your request... (Enter to send, Shift+Enter for a new line)"></textarea>
+                <button type="submit" id="send-button">Send</button>
+            </form>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

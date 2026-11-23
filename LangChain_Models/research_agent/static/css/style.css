@@ -1,0 +1,269 @@
+/* ---------- Basic colors (change these to re-theme the app) ---------- */
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --user-bubble: #2563eb;
+    --assistant-bubble: #273449;
+    --success: #22c55e;
+    --error: #f87171;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* ---------- Header ---------- */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 20px 16px 8px;
+}
+.app-header h1 {
+    margin: 0;
+    font-size: 1.7rem;
+}
+.app-header p {
+    margin: 4px 0 0;
+    color: var(--muted);
+}
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ---------- Layout ---------- */
+.layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 16px;
+}
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+.card h2 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.card-header h2 {
+    margin: 0;
+}
+
+/* ---------- Buttons and inputs ---------- */
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+button:hover {
+    background: var(--primary-hover);
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+button.secondary {
+    background: var(--border);
+}
+button.secondary:hover {
+    background: #475569;
+}
+button.small {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+select,
+textarea {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
+/* ---------- Sidebar lists ---------- */
+.item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.85rem;
+}
+.item-list li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    word-break: break-word;
+}
+.item-list li:last-child {
+    border-bottom: none;
+}
+.item-list a {
+    color: var(--primary);
+    text-decoration: none;
+}
+.item-list a:hover {
+    text-decoration: underline;
+}
+.muted {
+    color: var(--muted);
+}
+
+/* ---------- Chat ---------- */
+.chat-card {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 130px);
+    min-height: 500px;
+}
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 6px;
+}
+.message {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 90%;
+    overflow-x: auto;
+}
+.message.user {
+    align-self: flex-end;
+    background: var(--user-bubble);
+    white-space: pre-wrap;
+}
+.message.assistant {
+    align-self: flex-start;
+    background: var(--assistant-bubble);
+}
+.message.error {
+    align-self: flex-start;
+    background: #3f1d1d;
+    color: var(--error);
+}
+.chat-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.chat-form textarea {
+    flex: 1;
+    resize: vertical;
+}
+
+/* ---------- Agent steps (live tool progress) ---------- */
+.steps {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border-left: 3px solid var(--primary);
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+.step.done {
+    color: var(--success);
+}
+
+/* ---------- Markdown inside assistant answers ---------- */
+.message.assistant table {
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 0.85rem;
+}
+.message.assistant th,
+.message.assistant td {
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    vertical-align: top;
+    text-align: left;
+}
+.message.assistant th {
+    background: var(--bg);
+}
+.message.assistant a {
+    color: #93c5fd;
+}
+.message.assistant code {
+    background: var(--bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3 {
+    font-size: 1.05rem;
+    margin: 12px 0 6px;
+}
+
+/* ---------- Spinner ---------- */
+.spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    border: 2px solid var(--muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------- Small screens: stack sidebar under the chat ---------- */
+@media (max-width: 800px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        order: 2;
+    }
+}
