@@ -188,6 +188,7 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 | 4 | **FastAPI backend** | Endpoints work from the auto-generated `/docs` page | FastAPI, Pydantic request models, SSE streaming |
 | 5 | **Web page** | Chat with live tool steps, rendered Markdown and notes download | Consuming SSE with JavaScript |
 | 6 | **Polish** | Caching, friendly errors, and a saved "Humanizer literature review" note | Making the app reliable enough for daily use |
+| 6+ | **Upload your own PDF** | Upload a PDF in the sidebar and use every tool on it | File uploads with FastAPI (`UploadFile`) and `FormData` |
 
 ### Progress
 | # | Status | Notes |
@@ -196,6 +197,11 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 | 3 | ✅ Done | Memory works: "the second paper", "the first and third" resolve correctly across turns. Groq and OpenRouter run the full agent. Gemini's free tier is only **20 requests/day**, so it ran out before a full test. |
 | 4 | ✅ Done | `main.py` FastAPI backend: `/api/chat`, `/api/chat/stream` (live events), `/api/papers`, `/api/notes`. Run with `python main.py`, test at http://127.0.0.1:8000/docs. All 3 providers share one memory, so you can switch provider in the middle of a conversation. |
 | 5 | ✅ Done | Web page: `templates/index.html`, `static/css/style.css`, `static/js/app.js`. Chat with live agent steps, provider dropdown, New chat button, Markdown answers (tables) via marked.js, saved notes (download) and papers in the sidebar. Open http://127.0.0.1:8000 after `python main.py`. |
+| 6 | ✅ Done | **Upload:** sidebar upload card → `POST /api/upload` → `uploads/upload-<name>.pdf`; ids start with `upload-` and work with every tool; new `list_uploaded_papers` tool. **Caching:** summaries and meta in `cache/<id>.json`, FAISS index in `cache/<id>_index/` (second question 80 s → 13 s, survives restarts). **Errors:** friendly messages for wrong/missing ids, broken or non-PDF files, network errors, daily quota, and bad tool calls. **Note:** `notes/2026-11-23-humanizer-literature-review.md` (3 arXiv papers + an uploaded paper). Added `README.md`. |
+
+**Milestone 6 findings**
+- **Gemini comparison bug:** with 4 papers, Gemini's default structured output (`json_schema`) got stuck writing newlines for ~4 minutes and failed every time. `compare_papers` now uses `method="function_calling"` (18 s, works on all 3 providers), caps the output at 8000 tokens, and falls back to a simple table built from the saved summaries if the model still fails.
+- **Free models sometimes call a tool with a wrong name** (Groq once called `summary_paper`). The page now says to type "continue".
 
 **Milestone 3 findings**
 - **Groq summaries are weaker:** Groq gets only the first 12k + last 4k characters, so it misses datasets and limitations that sit in the middle of a paper. Use OpenRouter (1M context) or Gemini for best summaries.
@@ -221,6 +227,6 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 ## 6. Future upgrades (after v1 works)
 - Semantic Scholar API for citation counts and related papers
 - Persistent memory (SQLite checkpointer) so conversations survive restarts
-- "Upload your own PDF" in addition to arXiv
+- ~~"Upload your own PDF" in addition to arXiv~~ ✅ done in milestone 6
 - Export the comparison as a `.docx` or a slide deck
 - Rewrite as a **LangGraph** graph with explicit nodes (search → read → summarize → compare) and human approval before saving

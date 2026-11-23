@@ -5,6 +5,7 @@ langchain-community
 langchain-text-splitters
 langchain-google-genai
 langchain-groq
+langchain-openai
 langgraph
 python-dotenv
 pydantic
@@ -13,7 +14,7 @@ requests
 pypdf
 faiss-cpu
 
-# Web app (milestones 4-5)
+# Web app
 fastapi
 uvicorn
-jinja2
+python-multipart

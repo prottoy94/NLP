@@ -49,34 +49,34 @@ def main():
 
     first_paper = paper_ids[0]
 
-    run_tool(tools, "Step 2: Load paper", "load_paper", {"arxiv_id": first_paper})
-    run_tool(tools, "Step 2b: Load again (cached)", "load_paper", {"arxiv_id": first_paper})
+    run_tool(tools, "Step 2: Load paper", "load_paper", {"paper_id": first_paper})
+    run_tool(tools, "Step 2b: Load again (cached)", "load_paper", {"paper_id": first_paper})
 
     run_tool(
         tools,
         "Step 3: Summarize paper",
         "summarize_paper",
-        {"arxiv_id": first_paper, "style": "Technical"},
+        {"paper_id": first_paper, "style": "Technical"},
     )
 
     run_tool(
         tools,
         "Step 4: Ask the paper",
         "ask_paper",
-        {"arxiv_id": first_paper, "question": "Which datasets or benchmarks were used for evaluation?"},
+        {"paper_id": first_paper, "question": "Which datasets or benchmarks were used for evaluation?"},
     )
     run_tool(
         tools,
         "Step 4b: Question NOT in the paper",
         "ask_paper",
-        {"arxiv_id": first_paper, "question": "What is the capital of Australia?"},
+        {"paper_id": first_paper, "question": "What is the capital of Australia?"},
     )
 
     table = run_tool(
         tools,
         "Step 5: Compare papers",
         "compare_papers",
-        {"arxiv_ids": paper_ids[:2]},
+        {"paper_ids": paper_ids[:2]},
     )
 
     run_tool(

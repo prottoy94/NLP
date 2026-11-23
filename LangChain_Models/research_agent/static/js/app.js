@@ -6,6 +6,11 @@ const providerSelect = document.getElementById("provider-select");
 const newChatButton = document.getElementById("new-chat-button");
 const refreshButton = document.getElementById("refresh-button");
 
+const uploadForm = document.getElementById("upload-form");
+const uploadInput = document.getElementById("upload-input");
+const uploadButton = document.getElementById("upload-button");
+const uploadStatus = document.getElementById("upload-status");
+
 const notesList = document.getElementById("notes-list");
 const papersList = document.getElementById("papers-list");
 
@@ -19,6 +24,7 @@ let threadId = null;
 
 const TOOL_LABELS = {
     search_arxiv: "🔍 Searching arXiv",
+    list_uploaded_papers: "📎 Checking uploaded papers",
     load_paper: "📄 Reading paper",
     summarize_paper: "📝 Summarizing paper",
     ask_paper: "❓ Asking the paper",
@@ -72,8 +78,11 @@ function addStepsBox() {
 function getToolLabel(toolName, args) {
     let label = TOOL_LABELS[toolName] || "🔧 " + toolName;
 
-    if (args && args.arxiv_id) {
-        label += " " + args.arxiv_id;
+    if (args && args.paper_id) {
+        label += " " + args.paper_id;
+    }
+    if (args && args.paper_ids) {
+        label += " " + args.paper_ids.join(", ");
     }
     if (args && args.query) {
         label += ': "' + args.query + '"';
@@ -183,11 +192,18 @@ async function loadPapers() {
 
     for (const paper of data.papers) {
         const item = document.createElement("li");
-        const link = document.createElement("a");
-        link.href = "https://arxiv.org/abs/" + paper.arxiv_id;
-        link.target = "_blank";
-        link.textContent = paper.arxiv_id;
-        item.appendChild(link);
+
+        if (paper.uploaded) {
+            const name = document.createElement("strong");
+            name.textContent = "📎 " + paper.paper_id;
+            item.appendChild(name);
+        } else {
+            const link = document.createElement("a");
+            link.href = "https://arxiv.org/abs/" + paper.paper_id;
+            link.target = "_blank";
+            link.textContent = paper.paper_id;
+            item.appendChild(link);
+        }
 
         let status = "";
         if (paper.summarized) {
@@ -308,11 +324,61 @@ chatInput.addEventListener("keydown", (event) => {
 });
 
 
-// ---------- E. Buttons ----------
+// ---------- E. Upload a PDF paper ----------
+function setUploadStatus(text, type) {
+    uploadStatus.textContent = text;
+    uploadStatus.className = "upload-status " + type;
+}
+
+uploadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const file = uploadInput.files[0];
+    if (!file) {
+        setUploadStatus("Please choose a PDF file first.", "error");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    uploadButton.disabled = true;
+    setUploadStatus("Uploading and reading " + file.name + "...", "muted");
+
+    try {
+        const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Upload failed.");
+        }
+
+        setUploadStatus("✅ Uploaded as " + data.paper_id + " (" + data.pages + " pages)", "success");
+        addMessage(
+            "assistant",
+            "📎 Uploaded **" + data.title + "** as `" + data.paper_id + "` (" + data.pages + " pages).\n\n" +
+            "You can now summarize it, ask questions about it, or compare it with other papers."
+        );
+        chatInput.value = "Summarize the uploaded paper " + data.paper_id;
+        chatInput.focus();
+        uploadInput.value = "";
+        refreshSidebar();
+    } catch (error) {
+        setUploadStatus("⚠ " + error.message, "error");
+    } finally {
+        uploadButton.disabled = false;
+    }
+});
+
+
+// ---------- F. Buttons ----------
 newChatButton.addEventListener("click", resetChat);
 refreshButton.addEventListener("click", refreshSidebar);
 
 
-// ---------- F. Start ----------
+// ---------- G. Start ----------
 loadProviders();
 refreshSidebar();

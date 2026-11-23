@@ -4,7 +4,7 @@ import threading
 import uuid
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.memory import InMemorySaver
@@ -13,7 +13,7 @@ from pydantic import BaseModel
 import store
 from agent import build_agent, ask_agent
 from llm import DEFAULT_PROVIDER, PROVIDERS
-from tools import is_rate_limit
+from tools import is_rate_limit, is_daily_limit, add_uploaded_paper
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -25,6 +25,9 @@ STATIC_DIR = store.BASE_DIR / "static"
 
 app = FastAPI(title="Research Paper Agent")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+cached_count = store.load_cache()
+logger.info("Loaded %s papers from the disk cache", cached_count)
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +109,11 @@ def get_tool_steps(messages):
 
 
 def friendly_agent_error(error):
-    if is_rate_limit(error):
+    if is_daily_limit(error):
+        message = "The free-tier daily limit of this provider is used up. Switch provider (for example groq) or try again tomorrow."
+    elif "tool_use_failed" in str(error) or "tool call validation" in str(error).lower():
+        message = "The model called a tool the wrong way (free models do this sometimes). Type 'continue' to let it try again."
+    elif is_rate_limit(error):
         message = "The free-tier rate limit was reached. Wait a while or switch provider."
     else:
         message = f"Agent error: {str(error)[:300]}"
@@ -203,22 +210,44 @@ def chat_stream(chat_request: ChatRequest):
 def list_papers():
     papers = []
 
-    for entry in store.papers.values():
+    for paper_id, entry in list(store.papers.items()):
         meta = entry["meta"]
         if meta is None:
             continue
 
         papers.append(
             {
-                "arxiv_id": meta["arxiv_id"],
+                "paper_id": meta["paper_id"],
                 "title": meta["title"],
                 "published": meta["published"],
-                "loaded": entry["text"] is not None,
+                "uploaded": store.is_upload(paper_id),
+                "loaded": store.pdf_path(paper_id).exists(),
                 "summarized": entry["summary"] is not None,
             }
         )
 
     return {"papers": papers}
+
+
+@app.post("/api/upload")
+def upload_paper(file: UploadFile):
+    file_bytes = file.file.read()
+
+    try:
+        entry = add_uploaded_paper(file.filename, file_bytes)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception as error:
+        logger.exception("Error in /api/upload")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(error)[:300]}")
+
+    meta = entry["meta"]
+    return {
+        "paper_id": meta["paper_id"],
+        "title": meta["title"],
+        "pages": entry["pages"],
+        "characters": len(entry["text"]),
+    }
 
 
 @app.get("/api/notes")

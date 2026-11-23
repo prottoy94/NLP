@@ -23,7 +23,7 @@ class PaperSummary(BaseModel):
 class ComparisonRow(BaseModel):
     """One paper's values for every comparison dimension."""
 
-    arxiv_id: str
+    paper_id: str
     title: str
     cells: list[str] = Field(
         description="One short value per dimension, in the SAME order as the dimensions list."

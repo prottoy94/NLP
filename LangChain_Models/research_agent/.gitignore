@@ -1,3 +1,7 @@
 # Downloaded PDFs are a cache - they can always be re-downloaded from arXiv
 papers/
+# Your own uploaded PDFs (may be private or copyrighted)
+uploads/
+# Saved summaries and FAISS indexes - rebuilt automatically when missing
+cache/
 __pycache__/

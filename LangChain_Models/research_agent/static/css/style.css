@@ -150,6 +150,29 @@ textarea {
     color: var(--muted);
 }
 
+/* ---------- Upload ---------- */
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.upload-form input[type="file"] {
+    font-size: 0.85rem;
+    color: var(--muted);
+    max-width: 100%;
+}
+.upload-status {
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+.upload-status.success {
+    color: var(--success);
+}
+.upload-status.error {
+    color: var(--error);
+}
+
 /* ---------- Chat ---------- */
 .chat-card {
     display: flex;

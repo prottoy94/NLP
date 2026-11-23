@@ -21,8 +21,17 @@
 
     <main class="layout">
 
-        <!-- A. Sidebar: saved notes + loaded papers -->
+        <!-- A. Sidebar: upload + saved notes + loaded papers -->
         <aside class="sidebar">
+            <section class="card">
+                <h2>📎 Upload a paper</h2>
+                <form id="upload-form" class="upload-form">
+                    <input type="file" id="upload-input" accept=".pdf,application/pdf">
+                    <button type="submit" id="upload-button" class="small">Upload PDF</button>
+                </form>
+                <p id="upload-status" class="upload-status muted">PDF only, up to 20 MB.</p>
+            </section>
+
             <section class="card">
                 <div class="card-header">
                     <h2>🗒️ Saved notes</h2>

@@ -23,7 +23,7 @@ def check_api_key(key_name):
         raise LLMError(f"{key_name} is missing. Add it to your .env file.")
 
 
-def get_llm(provider=DEFAULT_PROVIDER, temperature=0):
+def get_llm(provider=DEFAULT_PROVIDER, temperature=0, max_tokens=None):
     provider = (provider or DEFAULT_PROVIDER).lower()
 
     if provider == "gemini":
@@ -31,6 +31,7 @@ def get_llm(provider=DEFAULT_PROVIDER, temperature=0):
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
             temperature=temperature,
+            max_tokens=max_tokens,
             google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
     elif provider == "groq":
@@ -38,6 +39,7 @@ def get_llm(provider=DEFAULT_PROVIDER, temperature=0):
         llm = ChatGroq(
             model="openai/gpt-oss-120b",
             temperature=temperature,
+            max_tokens=max_tokens,
             groq_api_key=os.getenv("GROQ_API_KEY"),
         )
     elif provider == "openrouter":
@@ -45,6 +47,7 @@ def get_llm(provider=DEFAULT_PROVIDER, temperature=0):
         llm = ChatOpenAI(
             model=OPENROUTER_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens,
             api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
         )
