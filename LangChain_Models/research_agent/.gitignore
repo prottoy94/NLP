@@ -5,3 +5,8 @@ uploads/
 # Saved summaries and FAISS indexes - rebuilt automatically when missing
 cache/
 __pycache__/
+# Saved chats (SQLite)
+*.db
+*.db-wal
+*.db-shm
+settings.json

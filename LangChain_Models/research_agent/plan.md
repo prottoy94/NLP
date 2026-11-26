@@ -198,6 +198,8 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 | 4 | ✅ Done | `main.py` FastAPI backend: `/api/chat`, `/api/chat/stream` (live events), `/api/papers`, `/api/notes`. Run with `python main.py`, test at http://127.0.0.1:8000/docs. All 3 providers share one memory, so you can switch provider in the middle of a conversation. |
 | 5 | ✅ Done | Web page: `templates/index.html`, `static/css/style.css`, `static/js/app.js`. Chat with live agent steps, provider dropdown, New chat button, Markdown answers (tables) via marked.js, saved notes (download) and papers in the sidebar. Open http://127.0.0.1:8000 after `python main.py`. |
 | 6 | ✅ Done | **Upload:** sidebar upload card → `POST /api/upload` → `uploads/upload-<name>.pdf`; ids start with `upload-` and work with every tool; new `list_uploaded_papers` tool. **Caching:** summaries and meta in `cache/<id>.json`, FAISS index in `cache/<id>_index/` (second question 80 s → 13 s, survives restarts). **Errors:** friendly messages for wrong/missing ids, broken or non-PDF files, network errors, daily quota, and bad tool calls. **Note:** `notes/2026-11-23-humanizer-literature-review.md` (3 arXiv papers + an uploaded paper). Added `README.md`. |
+| 7 | ✅ Done | **Chat history:** `SqliteSaver` → `chat_history.db`; sidebar "💬 Chat history" lists chats (newest first), click to reopen and continue; survives restarts. **Click a paper:** sidebar paper → paper card + "Asking about" chip, questions sent with `paper_id`. **File names:** `papers/[arXiv id]-[year]-[title].pdf` (old files renamed on start or on first load). **Delete:** 🗑 per paper with a confirm box, removes PDF + cache + index. |
+| 8 | ✅ Done | **New UI** from the Claude Design canvas: warm cream background, frosted-glass header and cards, Papers in a right column, custom provider dropdown, drop-zone upload, animated Agent steps card, typing animation and animated Send button, line icons (SVG sprite in `index.html`). **Download folder** card: `GET /api/settings`, `POST /api/settings/download-folder`, `POST /api/settings/open-folder`, saved in `settings.json`. |
 
 **Milestone 6 findings**
 - **Gemini comparison bug:** with 4 papers, Gemini's default structured output (`json_schema`) got stuck writing newlines for ~4 minutes and failed every time. `compare_papers` now uses `method="function_calling"` (18 s, works on all 3 providers), caps the output at 8000 tokens, and falls back to a simple table built from the saved summaries if the model still fails.
@@ -226,7 +228,80 @@ Errors (arXiv down, broken PDF, LLM rate limit) become friendly messages, the sa
 
 ## 6. Future upgrades (after v1 works)
 - Semantic Scholar API for citation counts and related papers
-- Persistent memory (SQLite checkpointer) so conversations survive restarts
+- ~~Persistent memory (SQLite checkpointer) so conversations survive restarts~~ ✅ done in milestone 7
 - ~~"Upload your own PDF" in addition to arXiv~~ ✅ done in milestone 6
 - Export the comparison as a `.docx` or a slide deck
 - Rewrite as a **LangGraph** graph with explicit nodes (search → read → summarize → compare) and human approval before saving
+
+---
+
+## 7. Milestone 7 plan: chat history, click-to-chat papers, file names, delete (✅ done)
+
+### 7.1 Chat history saved in SQLite (same pattern as `D:\LangGraph\Chatbot\langGraph_database_backend.py`)
+**Idea:** swap the memory. Today `main.py` keeps chats in `InMemorySaver`, so they are lost on restart. LangGraph's `SqliteSaver` saves every checkpoint into a file, `chat_history.db`, grouped by `thread_id`. The agent code itself does not change.
+
+**`main.py`, Step 1**
+```python
+DB_PATH = store.BASE_DIR / "chat_history.db"
+
+conn = sqlite3.connect(database=str(DB_PATH), check_same_thread=False)
+memory = SqliteSaver(conn=conn)
+```
+**`main.py`, Step 3: new helpers** (same names as in your LangGraph chatbot)
+- `retrive_all_thread_ids()` loops over `memory.list(None)` and collects the thread ids, newest first.
+- `load_conversation(thread_id)` returns `agent.get_state(config).values.get("messages", [])`.
+- `make_chat_history(messages)` turns LangChain messages into `{"role": "user"/"assistant", "content": ...}`. It skips tool messages and empty "tool call" messages, so only your questions and the agent's answers are shown.
+- `get_thread_title(messages)` uses the first 50 characters of your first message as the chat's title.
+
+**`main.py`, Step 4: new routes**
+- `GET /api/threads` returns `[{thread_id, title}]` for the sidebar.
+- `GET /api/threads/{thread_id}` returns the chat's messages, so the page can show them again.
+
+**Web page:** a new sidebar card, **"💬 Chat history"**. Clicking a chat loads its messages and continues it (the same `threadId`). The current chat is highlighted. The list refreshes after every answer. **New chat** works as before.
+
+**Install:** `pip install langgraph-checkpoint-sqlite`. This also updates `langgraph-checkpoint` from 4.1.1 to 4.3.2. `chat_history.db` is added to `.gitignore`.
+
+### 7.2 Click a paper in the sidebar to chat about it
+1. Each paper in the **📄 Papers** card becomes clickable.
+2. Clicking it shows a **paper card** in the chat (title, id, year, authors) and a chip above the input: **"📄 Asking about: 2605.10977 ✕"**.
+3. While the chip is on, every message you send includes `paper_id`. `main.py` adds one line in front of your message: `[Selected paper: 2605.10977 - PASA: ...]`. The agent then uses `ask_paper` / `summarize_paper` on that paper.
+4. Click **✕**, start a **New chat**, or click another paper to change or clear it.
+- `ChatRequest` gets an optional `paper_id: str | None = None`. `check_chat_request` adds the line.
+
+### 7.3 Downloaded PDFs named `[Paper no]-[Publishing Year]-[Paper Title].pdf`
+Example: `papers/2605.10977-2026-PASA A Principled Embedding-Space Watermarking Approach for LLM-Generated Text.pdf`
+- **Paper no = the arXiv id** (unique, and the app needs it to find the file again). **Year** comes from `published`.
+- **Title:** characters Windows does not allow (`\ / : * ? " < > |`) are removed, and the title is cut at 80 characters.
+- `store.py`: new `make_pdf_name(meta)`, plus `find_pdf(paper_id)`, which finds a paper's file by its id prefix (`2605.10977-*.pdf`, or an old-style `2605.10977.pdf`).
+- `tools.py`, `load_paper_text`: new downloads use the new name. An old-style file is renamed the first time it is loaded. On server start, old files whose info is already in `cache/` are renamed at once.
+- **Uploaded papers keep their own file name** (`upload-<name>.pdf`). You named them, and they have no reliable year.
+
+### 7.4 Delete a paper (with confirmation)
+- Each paper in the sidebar gets a **🗑** button.
+- Clicking it first asks: *"Delete 2605.10977 'PASA: ...'? This removes the PDF, its summary and its saved index. This cannot be undone."* (`confirm()` in the browser). **Cancel** does nothing.
+- **OK** calls `DELETE /api/papers/{paper_id}`, which:
+  - deletes the PDF (`papers/` or `uploads/`), `cache/<id>.json` and `cache/<id>_index/`;
+  - removes the paper from memory;
+  - refreshes the sidebar.
+  - If that paper was the selected chip, the chip is cleared.
+- `store.py` gets `delete_paper(paper_id)`. Saved notes are **not** deleted.
+
+### 7.5 Files that will change
+| File | Change |
+|---|---|
+| `main.py` | `SqliteSaver` memory, thread helpers, `/api/threads` routes, `DELETE /api/papers/{id}`, `paper_id` in `ChatRequest` |
+| `store.py` | `make_pdf_name`, `find_pdf`, `rename_old_pdfs`, `delete_paper` |
+| `tools.py` | Use the new file name when downloading or loading |
+| `templates/index.html` | "💬 Chat history" card, selected-paper chip above the input |
+| `static/css/style.css` | Styles for the history list, clickable papers, 🗑 button and chip |
+| `static/js/app.js` | New sections: chat history, select a paper, delete a paper |
+| `requirements.txt`, `.gitignore`, `README.md`, `plan.md` | Docs, the new package, ignore `chat_history.db` |
+
+`agent.py` (the command-line chat) stays as it is, with in-memory chats.
+
+### 7.6 How it will be tested
+- Chat, **restart the server**, and check that the chat is still in "Chat history" and continues with memory.
+- Switch between 2 chats, and check that each shows its own messages.
+- Click a paper, ask "what dataset is used?", and check that the agent answers about that paper.
+- Download a new paper and check the file name. Check that the old files were renamed and still load.
+- Delete: **Cancel** keeps the paper. **OK** removes the file, cache and sidebar entry.

@@ -48,15 +48,21 @@ python agent.py groq       # or openrouter
   Then ask things like *"Summarize the uploaded paper upload-my-paper"* or
   *"Compare my uploaded paper with 2 recent arXiv papers on AI text detection"*.
 - Watch the **live steps** while the agent works.
+- **💬 Chat history:** every chat is saved in `chat_history.db` (SQLite). Click a chat in the sidebar
+  to open it again and continue it, even after a restart.
+- **Click a paper** in the 📄 Papers list to ask about it. A chip "📄 Asking about: …" appears above the
+  input, and your questions go to the agent with that paper. Click ✕ to clear it.
+- **🗑 Delete a paper:** asks for confirmation, then removes its PDF, summary and saved index.
 - Download saved notes from the sidebar.
 
 ## Folders
 | Folder | What is inside |
 |---|---|
-| `papers/` | Downloaded arXiv PDFs (cache) |
+| `papers/` | Downloaded arXiv PDFs, named `[arXiv id]-[year]-[title].pdf` |
 | `uploads/` | Your uploaded PDFs |
 | `cache/` | Saved summaries (`.json`) and FAISS indexes, so a restart does not redo work |
 | `notes/` | Saved Markdown notes |
+| `chat_history.db` | All chats, saved per thread by LangGraph's `SqliteSaver` |
 
 ## Good to know
 - **Gemini free tier = 20 chat requests per day.** When it is used up, switch to groq or openrouter.

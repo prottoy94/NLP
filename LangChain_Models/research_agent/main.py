@@ -1,5 +1,8 @@
 import json
 import logging
+import os
+import re
+import sqlite3
 import threading
 import uuid
 
@@ -7,7 +10,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel
 
 import store
@@ -22,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = store.BASE_DIR / "templates"
 STATIC_DIR = store.BASE_DIR / "static"
+DB_PATH = store.BASE_DIR / "chat_history.db"
+
+TITLE_MAX_CHARS = 50
+PAPER_LINE_PATTERN = re.compile(r"^\[Selected paper: [^\]]*\]\n")
 
 app = FastAPI(title="Research Paper Agent")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -29,11 +36,15 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 cached_count = store.load_cache()
 logger.info("Loaded %s papers from the disk cache", cached_count)
 
+renamed_count = store.rename_old_pdfs()
+logger.info("Renamed %s old PDF files to the new name format", renamed_count)
+
 
 # ---------------------------------------------------------------------------
-# Step 1: One agent per provider, all sharing the same memory
+# Step 1: One agent per provider, all sharing the same SQLite memory
 # ---------------------------------------------------------------------------
-memory = InMemorySaver()
+conn = sqlite3.connect(database=str(DB_PATH), check_same_thread=False)
+memory = SqliteSaver(conn=conn)
 agents = {}
 agents_lock = threading.Lock()
 
@@ -55,6 +66,7 @@ class ChatRequest(BaseModel):
     message: str
     provider: str = DEFAULT_PROVIDER
     thread_id: str | None = None
+    paper_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -62,6 +74,10 @@ class ChatResponse(BaseModel):
     provider: str
     answer: str
     tool_steps: list[str]
+
+
+class FolderRequest(BaseModel):
+    path: str
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +100,21 @@ def check_chat_request(chat_request):
     if not thread_id:
         thread_id = str(uuid.uuid4())
 
+    if chat_request.paper_id:
+        message = make_paper_line(chat_request.paper_id) + message
+
     return message, provider, thread_id
+
+
+def make_paper_line(paper_id):
+    entry = store.get(paper_id)
+
+    if entry and entry["meta"]:
+        title = entry["meta"]["title"]
+        line = f"[Selected paper: {paper_id} - {title}]\n"
+    else:
+        line = f"[Selected paper: {paper_id}]\n"
+    return line
 
 
 def count_messages(agent, thread_id):
@@ -106,6 +136,52 @@ def get_tool_steps(messages):
                 tool_steps.append(f"{tool_call['name']} {args_text}")
 
     return tool_steps
+
+
+def retrive_all_thread_ids():
+    all_threads = []
+
+    for checkpoint in memory.list(None):
+        thread_id = checkpoint.config["configurable"]["thread_id"]
+        if thread_id not in all_threads:
+            all_threads.append(thread_id)
+
+    return all_threads
+
+
+def load_conversation(thread_id):
+    agent = get_agent(DEFAULT_PROVIDER)
+    config = {"configurable": {"thread_id": thread_id}}
+    return agent.get_state(config=config).values.get("messages", [])
+
+
+def make_chat_history(messages):
+    chat_history = []
+
+    for message in messages:
+        if message.type == "human":
+            role = "user"
+        elif message.type == "ai" and message.text.strip():
+            role = "assistant"
+        else:
+            continue
+
+        chat_history.append({"role": role, "content": message.text})
+
+    return chat_history
+
+
+def get_thread_title(messages):
+    for message in messages:
+        if message.type == "human":
+            text = PAPER_LINE_PATTERN.sub("", message.text).strip()
+            text = " ".join(text.split())
+
+            if len(text) > TITLE_MAX_CHARS:
+                text = text[:TITLE_MAX_CHARS] + "..."
+            return text
+
+    return "Empty chat"
 
 
 def friendly_agent_error(error):
@@ -221,12 +297,86 @@ def list_papers():
                 "title": meta["title"],
                 "published": meta["published"],
                 "uploaded": store.is_upload(paper_id),
-                "loaded": store.pdf_path(paper_id).exists(),
+                "loaded": store.find_pdf(paper_id) is not None,
                 "summarized": entry["summary"] is not None,
             }
         )
 
     return {"papers": papers}
+
+
+@app.delete("/api/papers/{paper_id}")
+def delete_paper(paper_id: str):
+    try:
+        paper_id = store.normalize_id(paper_id)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+    if store.get(paper_id) is None and store.find_pdf(paper_id) is None:
+        raise HTTPException(status_code=404, detail="Paper not found.")
+
+    try:
+        store.delete_paper(paper_id)
+    except Exception as error:
+        logger.exception("Error while deleting %s", paper_id)
+        raise HTTPException(status_code=500, detail=f"Could not delete the paper: {str(error)[:300]}")
+
+    logger.info("Deleted paper %s", paper_id)
+    return {"deleted": paper_id}
+
+
+@app.get("/api/threads")
+def list_threads():
+    threads = []
+
+    for thread_id in retrive_all_thread_ids():
+        messages = load_conversation(thread_id)
+        threads.append(
+            {
+                "thread_id": thread_id,
+                "title": get_thread_title(messages),
+            }
+        )
+
+    return {"threads": threads}
+
+
+@app.get("/api/threads/{thread_id}")
+def get_thread(thread_id: str):
+    messages = load_conversation(thread_id)
+
+    if not messages:
+        raise HTTPException(status_code=404, detail="Chat not found.")
+
+    return {"thread_id": thread_id, "messages": make_chat_history(messages)}
+
+
+@app.get("/api/settings")
+def get_settings():
+    return {"download_folder": str(store.PAPERS_DIR)}
+
+
+@app.post("/api/settings/download-folder")
+def change_download_folder(folder_request: FolderRequest):
+    try:
+        path = store.set_papers_dir(folder_request.path)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception as error:
+        logger.exception("Error while changing the download folder")
+        raise HTTPException(status_code=400, detail=f"Could not use this folder: {str(error)[:300]}")
+
+    logger.info("Download folder changed to %s", path)
+    return {"download_folder": str(path)}
+
+
+@app.post("/api/settings/open-folder")
+def open_download_folder():
+    if not hasattr(os, "startfile"):
+        raise HTTPException(status_code=400, detail="Opening folders only works on Windows.")
+
+    os.startfile(store.PAPERS_DIR)
+    return {"opened": str(store.PAPERS_DIR)}
 
 
 @app.post("/api/upload")

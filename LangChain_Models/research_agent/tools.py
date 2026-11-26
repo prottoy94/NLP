@@ -205,11 +205,16 @@ def load_paper_text(paper_id):
         return entry
 
     meta = get_meta(paper_id)
-    path = store.pdf_path(paper_id)
 
-    if not path.exists():
+    if not store.is_upload(paper_id):
+        store.rename_old_pdf(meta)
+
+    path = store.find_pdf(paper_id)
+
+    if path is None:
         if store.is_upload(paper_id):
             raise ValueError(f"The uploaded file for {paper_id} is missing. Please upload it again.")
+        path = store.pdf_path(meta)
         download_pdf(meta, path)
 
     text, page_count = read_pdf_text(path, paper_id)
@@ -240,12 +245,6 @@ def add_uploaded_paper(file_name, file_bytes):
         raise ValueError(f"The file is {size_mb:.1f} MB. The limit is {MAX_UPLOAD_MB} MB.")
 
     paper_id = make_upload_id(file_name)
-    path = store.pdf_path(paper_id)
-
-    store.remove(paper_id)
-    store.delete_cache(paper_id)
-    path.write_bytes(file_bytes)
-
     title = Path(file_name).stem.replace("_", " ").replace("-", " ").strip()
 
     meta = {
@@ -257,6 +256,12 @@ def add_uploaded_paper(file_name, file_bytes):
         "pdf_url": None,
         "source": "upload",
     }
+
+    store.remove(paper_id)
+    store.delete_cache(paper_id)
+
+    path = store.pdf_path(meta)
+    path.write_bytes(file_bytes)
     store.upsert(paper_id, meta=meta)
 
     try:

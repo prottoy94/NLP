@@ -7,6 +7,7 @@ langchain-google-genai
 langchain-groq
 langchain-openai
 langgraph
+langgraph-checkpoint-sqlite
 python-dotenv
 pydantic
 arxiv
